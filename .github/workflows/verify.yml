@@ -1,0 +1,96 @@
+name: Verify
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/verify.yml
+      - .github/workflows/deploy.yml
+      - infrastructure/**
+    types:
+      - synchronize
+      - opened
+      - reopened
+
+defaults:
+  run:
+    shell: bash -eu {0}
+
+jobs:
+
+  setup:
+    name: Setup
+    runs-on: ubuntu-20.04
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+    steps:
+      - run: |+
+          ENVIRONMENT="${BRANCH//\//-}"
+          ENVIRONMENT="${BRANCH//./-}"
+          ENVIRONMENT="${BRANCH//\?/-}"
+          echo "::set-output name=environment::${ENVIRONMENT}"
+        id: env
+        env:
+          BRANCH: ${{ github.head_ref }}
+
+  verify-terraform-formatting:
+    name: Terraform Formatting
+    needs: setup
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.1.7
+      - run: terraform fmt -check -recursive -no-color -diff
+        id: fmt
+        working-directory: infrastructure/cloud
+        env:
+          TF_IN_AUTOMATION: true
+      - uses: thollander/actions-comment-pull-request@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          message: |-
+            ### Terraform formatting: ${{ steps.fmt.outcome }}
+            <details><summary>Expand...</summary>
+            
+            ```diff
+            ${{ steps.fmt.outputs.stdout }}
+            ```
+            </details>
+
+  deploy-preview-environment:
+    name: Deploy to Preview Environment
+    needs: [setup, verify-terraform-formatting]
+    uses: ./.github/workflows/deploy.yml
+    with:
+      branch: ${{ github.head_ref }}
+      environment: ${{ needs.setup.outputs.environment }}
+    secrets:
+      GCP_BILLING_ACCOUNT_ID: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_KEY: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_KEY }}
+
+  report-preview-deployment:
+    name: Report
+    needs: [ setup, deploy-preview-environment ]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: thollander/actions-comment-pull-request@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          message: |-
+            ### Terraform plan for "${{ needs.setup.outputs.environment }}": ${{ needs.deploy-preview-environment.outputs.plan_outcome }}
+            <details><summary>Expand...</summary>
+            
+            ```HCL
+            ${{ needs.deploy-preview-environment.outputs.plan_output }}
+            ```
+            </details>
+            
+            ### Terraform apply to "${{ needs.setup.outputs.environment }}": ${{ needs.deploy-preview-environment.outputs.apply_outcome }}
+            <details><summary>Expand...</summary>
+            
+            ```HCL
+            ${{ needs.deploy-preview-environment.outputs.apply_output }}
+            ```
+            </details>
