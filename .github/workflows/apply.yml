@@ -70,9 +70,6 @@ jobs:
     name: Build Cloud Terraform plan
     needs: setup
     runs-on: ubuntu-20.04
-    defaults:
-      run:
-        working-directory: ./infrastructure/cloud
     env:
       TF_IN_AUTOMATION: true
       TF_VAR_environment: ${{ needs.setup.outputs.environment }}
@@ -92,10 +89,14 @@ jobs:
           terraform_version: 1.1.7
       - run: terraform fmt -check -recursive -no-color -diff
         id: fmt
+        working-directory: ./infrastructure/cloud
       - run: terraform init -input=false -no-color
+        working-directory: ./infrastructure/cloud
       - run: terraform plan -input=false -lock-timeout=180s -no-color -out tfplan
         id: plan
+        working-directory: ./infrastructure/cloud
       - run: tar -cvjf ../../terraform.tar.bz2 .terraform* *.tf tfplan
+        working-directory: ./infrastructure/cloud
       - uses: actions/upload-artifact@v3
         with:
           name: terraform.tar.bz2
