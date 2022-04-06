@@ -21,7 +21,6 @@ jobs:
   setup:
     name: Setup
     runs-on: ubuntu-20.04
-    if: github.event_name == 'pull_request'
     outputs:
       branch: ${{ steps.branch.outputs.branch }}
       environment: ${{ steps.env.outputs.environment }}
