@@ -154,6 +154,7 @@ jobs:
             </details>
       - run: terraform apply -input=false -lock-timeout=180s -auto-approve -no-color tfplan
         id: apply
+        working-directory: infrastructure/cloud
       - uses: thollander/actions-comment-pull-request@v1
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
