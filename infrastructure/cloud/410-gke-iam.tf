@@ -11,7 +11,7 @@ resource "google_project_iam_member" "gke-node" {
     "roles/monitoring.metricWriter",
   ])
 
-  depends_on   = [google_project_iam_member.gha-arikkfir-deployment]
+  depends_on = [google_project_iam_member.gha-arikkfir-deployment]
   project    = google_project.project.project_id
   role       = each.key
   member     = "serviceAccount:${google_service_account.gke-node.email}"
