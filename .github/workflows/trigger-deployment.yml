@@ -26,9 +26,9 @@ jobs:
           if [[ "${COMMENT}" =~ ${ENVIRONMENT_REGEX} ]]; then
             ENVIRONMENT="${BASH_REMATCH[1]}"
           fi
-          ENVIRONMENT="${BRANCH//\//-}"
-          ENVIRONMENT="${BRANCH//./-}"
-          ENVIRONMENT="${BRANCH//\?/-}"
+          ENVIRONMENT="${ENVIRONMENT//\//-}"
+          ENVIRONMENT="${ENVIRONMENT//./-}"
+          ENVIRONMENT="${ENVIRONMENT//\?/-}"
           echo "::set-output name=branch::${BRANCH}"
           echo "::set-output name=environment::${ENVIRONMENT}"
         env:
