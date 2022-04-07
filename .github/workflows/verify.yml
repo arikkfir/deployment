@@ -96,8 +96,8 @@ jobs:
             </details>
 
   deploy-production-environment:
-    name: Deploy to Preview Environment
-    needs: [setup, verify-terraform-formatting]
+    name: Deploy to Production Environment
+    needs: [setup, deploy-preview-environment]
     uses: ./.github/workflows/deploy.yml
     with:
       branch: ${{ github.head_ref }}
