@@ -21,6 +21,7 @@ jobs:
       - uses: xt0rted/pull-request-comment-branch@v1
         id: get-branch-from-pr
       - run: |+
+          set -x
           ENVIRONMENT="${BRANCH}"
           if [[ "${COMMENT}" =~ ${ENVIRONMENT_REGEX} ]]; then
             ENVIRONMENT="${BASH_REMATCH[1]}"
