@@ -31,6 +31,7 @@ jobs:
         env:
           TF_IN_AUTOMATION: true
       - uses: thollander/actions-comment-pull-request@v1
+        if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
@@ -87,6 +88,7 @@ jobs:
         id: plan
         working-directory: infrastructure/cloud
       - uses: thollander/actions-comment-pull-request@v1
+        if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
@@ -101,6 +103,7 @@ jobs:
         id: apply
         working-directory: infrastructure/cloud
       - uses: thollander/actions-comment-pull-request@v1
+        if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
@@ -142,6 +145,7 @@ jobs:
         id: plan
         working-directory: infrastructure/cloud
       - uses: thollander/actions-comment-pull-request@v1
+        if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
@@ -156,6 +160,7 @@ jobs:
         id: apply
         working-directory: infrastructure/cloud
       - uses: thollander/actions-comment-pull-request@v1
+        if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
