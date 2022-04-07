@@ -1,0 +1,45 @@
+name: Trigger Deployment
+
+on:
+  issue_comment:
+    types: [ created ]
+
+defaults:
+  run:
+    shell: bash -eu {0}
+
+jobs:
+
+  setup:
+    name: Setup
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/deploy')
+    runs-on: ubuntu-20.04
+    outputs:
+      branch: ${{ steps.infer.outputs.branch }}
+      environment: ${{ steps.infer.outputs.environment }}
+    steps:
+      - uses: xt0rted/pull-request-comment-branch@v1
+        id: get-branch-from-pr
+      - run: |+
+          ENVIRONMENT="${BRANCH}"
+          if [[ "${COMMENT}" =~ ${ENVIRONMENT_REGEX} ]]; then
+            ENVIRONMENT="${BASH_REMATCH[1]}"
+          fi
+          ENVIRONMENT="${BRANCH//\//-}"
+          ENVIRONMENT="${BRANCH//./-}"
+          ENVIRONMENT="${BRANCH//\?/-}"
+          echo "::set-output name=branch::${BRANCH}"
+          echo "::set-output name=environment::${ENVIRONMENT}"
+        env:
+          BRANCH: ${{ steps.get-branch-from-pr.outputs.head_ref }}
+          COMMENT: ${{ github.event.comment.body }}
+          ENVIRONMENT_REGEX: "^/deploy (.+)$"
+        id: infer
+
+  trigger:
+    name: Trigger
+    needs: setup
+    uses: arikkfir/deployment/.github/workflows/deployment.yml@main
+    with:
+      branch: ${{ needs.setup.outputs.branch }}
+      environment: ${{ needs.setup.outputs.environment }}
