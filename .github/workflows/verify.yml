@@ -34,7 +34,7 @@ jobs:
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
-            ### ${{ steps.fmt.outcome == 'success' ? '✅' : '❗️' }} Terraform formatting
+            ### ${{ steps.fmt.outcome == 'success' && '✅' || '❗️' }} Terraform formatting
             <details><summary>Expand...</summary>
             
             ```diff
@@ -90,7 +90,7 @@ jobs:
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
-            ### ${{ steps.plan.outcome == 'success' ? '✅' : '❗️' }} Preview environment plan
+            ### ${{ steps.plan.outcome == 'success' && '✅' || '❗️' }} Preview environment plan
             <details><summary>Expand...</summary>
             
             ```HCL
@@ -103,7 +103,7 @@ jobs:
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
-            ### ${{ steps.apply.outcome == 'success' ? '✅' : '❗️' }} Preview environment deployment
+            ### ${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Preview environment deployment
             <details><summary>Expand...</summary>
             
             ```HCL
@@ -144,7 +144,7 @@ jobs:
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
-            ### ${{ steps.plan.outcome == 'success' ? '✅' : '❗️' }} Production environment plan
+            ### ${{ steps.plan.outcome == 'success' && '✅' || '❗️' }} Production environment plan
             <details><summary>Expand...</summary>
             
             ```HCL
@@ -157,7 +157,7 @@ jobs:
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
-            ### ${{ steps.apply.outcome == 'success' ? '✅' : '❗️' }} Production environment deployment
+            ### ${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Production environment deployment
             <details><summary>Expand...</summary>
             
             ```HCL
