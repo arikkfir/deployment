@@ -36,7 +36,7 @@ jobs:
           ENVIRONMENT_REGEX: "^/deploy (.+)$"
         id: infer
 
-  deployment:
+  trigger-deployment:
     name: Deployment
     needs: setup
     uses: ./.github/workflows/deploy.yml
@@ -50,7 +50,7 @@ jobs:
 
   report:
     name: Report results on PR
-    needs: [ setup, deployment ]
+    needs: [ setup, trigger-deployment ]
     runs-on: ubuntu-20.04
     steps:
       - uses: thollander/actions-comment-pull-request@v1
