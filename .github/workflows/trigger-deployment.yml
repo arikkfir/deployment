@@ -36,10 +36,33 @@ jobs:
           ENVIRONMENT_REGEX: "^/deploy (.+)$"
         id: infer
 
-  trigger:
-    name: Trigger
+  deployment:
+    name: Deployment
     needs: setup
-    uses: arikkfir/deployment/.github/workflows/deployment.yml@main
+    uses: ./.github/workflows/deploy.yml
     with:
       branch: ${{ needs.setup.outputs.branch }}
       environment: ${{ needs.setup.outputs.environment }}
+    secrets:
+      GCP_BILLING_ACCOUNT_ID: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_KEY: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_KEY }}
+
+  report:
+    name: Report results on PR
+    needs: [ setup, deployment ]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: thollander/actions-comment-pull-request@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          message: |-
+            ### Terraform plan for "${{ needs.setup.outputs.environment }}": ${{ needs.deployment.outputs.plan_outcome }}
+            ```HCL
+            ${{ needs.deployment.outputs.plan_output }}
+            ```
+            
+            ### Terraform apply to "${{ needs.setup.outputs.environment }}": ${{ needs.deployment.outputs.apply_outcome }}
+            ```HCL
+            ${{ needs.deployment.outputs.apply_output }}
+            ```
