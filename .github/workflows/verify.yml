@@ -1,4 +1,4 @@
-name: Verify
+name: Deploy
 
 on:
   pull_request:
@@ -58,7 +58,7 @@ jobs:
           BRANCH: ${{ github.head_ref }}
 
   deploy-preview-environment:
-    name: Deploy to Preview Environment
+    name: Preview Environment
     needs: [infer-preview-environment, verify-terraform-formatting]
     runs-on: ubuntu-20.04
     environment:
@@ -113,7 +113,7 @@ jobs:
             </details>
 
   deploy-production-environment:
-    name: Deploy to Production Environment
+    name: Production Environment
     needs: deploy-preview-environment
     runs-on: ubuntu-20.04
     environment:
