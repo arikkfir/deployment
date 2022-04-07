@@ -71,7 +71,7 @@ jobs:
       GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_KEY: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_KEY }}
 
   report-preview-deployment:
-    name: Report
+    name: Report Preview Deployment
     needs: [ setup, deploy-preview-environment ]
     runs-on: ubuntu-20.04
     steps:
@@ -92,5 +92,42 @@ jobs:
             
             ```HCL
             ${{ needs.deploy-preview-environment.outputs.apply_output }}
+            ```
+            </details>
+
+  deploy-production-environment:
+    name: Deploy to Preview Environment
+    needs: [setup, verify-terraform-formatting]
+    uses: ./.github/workflows/deploy.yml
+    with:
+      branch: ${{ github.head_ref }}
+      environment: production
+    secrets:
+      GCP_BILLING_ACCOUNT_ID: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_KEY: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_KEY }}
+
+  report-production-deployment:
+    name: Report Production Deployment
+    needs: [ setup, deploy-production-environment ]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: thollander/actions-comment-pull-request@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          message: |-
+            ### Terraform plan for "production": ${{ needs.deploy-production-environment.outputs.plan_outcome }}
+            <details><summary>Expand...</summary>
+            
+            ```HCL
+            ${{ needs.deploy-production-environment.outputs.plan_output }}
+            ```
+            </details>
+            
+            ### Terraform apply to "production": ${{ needs.deploy-production-environment.outputs.apply_outcome }}
+            <details><summary>Expand...</summary>
+            
+            ```HCL
+            ${{ needs.deploy-production-environment.outputs.apply_output }}
             ```
             </details>
