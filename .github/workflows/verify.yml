@@ -1,0 +1,168 @@
+name: Deploy
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/verify.yml
+      - .github/workflows/deploy.yml
+      - infrastructure/**
+    types:
+      - synchronize
+      - opened
+      - reopened
+
+defaults:
+  run:
+    shell: bash -eu {0}
+
+jobs:
+
+  verify-terraform-formatting:
+    name: Terraform Formatting
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.1.7
+      - run: terraform fmt -check -recursive -no-color -diff
+        id: fmt
+        working-directory: infrastructure/cloud
+        env:
+          TF_IN_AUTOMATION: true
+      - uses: thollander/actions-comment-pull-request@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          message: |-
+            ### ${{ steps.fmt.outcome == 'success' && '✅' || '❗️' }} Terraform formatting
+            <details><summary>Expand...</summary>
+            
+            ```diff
+            ${{ steps.fmt.outputs.stdout }}
+            ```
+            </details>
+
+  infer-preview-environment:
+    name: Infer Preview Environment
+    runs-on: ubuntu-20.04
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+    steps:
+      - run: |+
+          ENVIRONMENT="${BRANCH//\//-}"
+          ENVIRONMENT="${BRANCH//./-}"
+          ENVIRONMENT="${BRANCH//\?/-}"
+          echo "::set-output name=environment::${ENVIRONMENT}"
+        id: env
+        env:
+          BRANCH: ${{ github.head_ref }}
+
+  deploy-preview-environment:
+    name: Preview Environment
+    needs: [infer-preview-environment, verify-terraform-formatting]
+    runs-on: ubuntu-20.04
+    environment:
+      name: ${{ needs.infer-preview-environment.outputs.environment }}
+      url: https://${{ needs.infer-preview-environment.outputs.environment }}.env.kfirs.com
+    env:
+      TF_IN_AUTOMATION: true
+      TF_VAR_environment: ${{ needs.infer-preview-environment.outputs.environment }}
+      TF_VAR_gcp_billing_account: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
+      TF_VAR_gcp_project: ${{ secrets.GCP_PROJECT_ID }}
+      TF_VAR_gcp_region: europe-west3
+      TF_VAR_gcp_zone: europe-west3-a
+    steps:
+      - uses: actions/checkout@v3
+      - uses: google-github-actions/auth@v0
+        with:
+          service_account: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_NAME }}
+          credentials_json: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_KEY }}
+      - uses: google-github-actions/setup-gcloud@v0
+      - uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.1.7
+      - run: terraform init -input=false -no-color
+        working-directory: infrastructure/cloud
+      - run: terraform plan -input=false -lock-timeout=180s -no-color -out tfplan
+        id: plan
+        working-directory: infrastructure/cloud
+      - uses: thollander/actions-comment-pull-request@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          message: |-
+            ### ${{ steps.plan.outcome == 'success' && '✅' || '❗️' }} Preview environment plan
+            <details><summary>Expand...</summary>
+            
+            ```HCL
+            ${{ steps.plan.outputs.stdout }}
+            ```
+            </details>
+      - run: terraform apply -input=false -lock-timeout=180s -auto-approve -no-color tfplan
+        id: apply
+        working-directory: infrastructure/cloud
+      - uses: thollander/actions-comment-pull-request@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          message: |-
+            ### ${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Preview environment deployment
+            <details><summary>Expand...</summary>
+            
+            ```HCL
+            ${{ steps.apply.outputs.stdout }}
+            ```
+            </details>
+
+  deploy-production-environment:
+    name: Production Environment
+    needs: deploy-preview-environment
+    runs-on: ubuntu-20.04
+    environment:
+      name: production
+      url: https://kfirs.com
+    env:
+      TF_IN_AUTOMATION: true
+      TF_VAR_environment: production
+      TF_VAR_gcp_billing_account: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
+      TF_VAR_gcp_project: ${{ secrets.GCP_PROJECT_ID }}
+      TF_VAR_gcp_region: europe-west3
+      TF_VAR_gcp_zone: europe-west3-a
+    steps:
+      - uses: actions/checkout@v3
+      - uses: google-github-actions/auth@v0
+        with:
+          service_account: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_NAME }}
+          credentials_json: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_KEY }}
+      - uses: google-github-actions/setup-gcloud@v0
+      - uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.1.7
+      - run: terraform init -input=false -no-color
+        working-directory: infrastructure/cloud
+      - run: terraform plan -input=false -lock-timeout=180s -no-color -out tfplan
+        id: plan
+        working-directory: infrastructure/cloud
+      - uses: thollander/actions-comment-pull-request@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          message: |-
+            ### ${{ steps.plan.outcome == 'success' && '✅' || '❗️' }} Production environment plan
+            <details><summary>Expand...</summary>
+            
+            ```HCL
+            ${{ steps.plan.outputs.stdout }}
+            ```
+            </details>
+      - run: terraform apply -input=false -lock-timeout=180s -auto-approve -no-color tfplan
+        id: apply
+        working-directory: infrastructure/cloud
+      - uses: thollander/actions-comment-pull-request@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          message: |-
+            ### ${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Production environment deployment
+            <details><summary>Expand...</summary>
+            
+            ```HCL
+            ${{ steps.apply.outputs.stdout }}
+            ```
+            </details>
