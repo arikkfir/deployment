@@ -30,6 +30,10 @@ defaults:
   run:
     shell: bash -eu {0}
 
+concurrency:
+  cancel-in-progress: false
+  group: ${{ inputs.environment }}
+
 jobs:
 
   plan-deployment:
