@@ -1,4 +1,8 @@
 resource "google_container_cluster" "primary" {
+  depends_on = [
+    google_service_account_iam_member.default-compute-gha-arikkfir-deployment-iam-serviceAccountUser,
+  ]
+
   # Provisioning
   provider    = google-beta
   project     = google_project.project.project_id
