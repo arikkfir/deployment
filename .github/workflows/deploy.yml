@@ -13,7 +13,7 @@ on:
 
 defaults:
   run:
-    shell: bash -eu {0}
+    shell: bash -euo pipefail {0}
 
 env:
   GCP_REGION: europe-west3
@@ -64,16 +64,14 @@ jobs:
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
-            ### ${{ steps.fmt.outcome == 'success' && '✅' || '❗️' }} Terraform formatting
-            <details><summary>Expand...</summary>
+            <details><summary>${{ steps.fmt.outcome == 'success' && '✅' || '❗️' }} Cloud Infrastructure formatting</summary>
             
             ```diff
             ${{ steps.fmt.outputs.stdout }}
             ```
             </details>
 
-            ### ${{ steps.plan.outcome == 'success' && '✅' || '❗️' }} Terraform plan
-            <details><summary>Expand...</summary>
+            <details><summary>${{ steps.plan.outcome == 'success' && '✅' || '❗️' }} Cloud Infrastructure plan</summary>
             
             ```HCL
             ${{ steps.plan.outputs.stdout }}
@@ -136,60 +134,16 @@ jobs:
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
-            ### ${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Preview Apps deployment
-            <details><summary>Kude YAML</summary>
+            <details><summary>${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Preview Apps deployment</summary>
             
             ```
             ${{ env.KUDE_YAML }}
             ```
             </details>
 
-  deploy-production-cloud-infrastructure:
+  deploy-production-environment:
     name: Production Cloud Infrastructure
     needs: [ verify-cloud-infrastructure, deploy-preview-environment ]
-    runs-on: ubuntu-20.04
-    environment:
-      name: production
-      url: https://kfirs.com
-    concurrency:
-      group: production
-      cancel-in-progress: false
-    timeout-minutes: 60
-    steps:
-      - uses: google-github-actions/auth@v0
-        with:
-          service_account: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_NAME }}
-          credentials_json: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_KEY }}
-      - uses: google-github-actions/setup-gcloud@v0
-      - uses: hashicorp/setup-terraform@v1
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
-      - uses: actions/download-artifact@v3
-        with:
-          name: tfplan
-      - run: tar xjvf tfplan.tar.bz2
-      - run: terraform apply -input=false -lock-timeout=180s -auto-approve -no-color tfplan
-        id: apply
-        env:
-          TF_VAR_environment: production
-          TF_VAR_gcp_billing_account: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
-          TF_VAR_gcp_project: ${{ secrets.GCP_PROJECT_ID }}
-      - uses: thollander/actions-comment-pull-request@v1
-        if: always()
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          message: |-
-            ### ${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Production Terraform deployment
-            <details><summary>Expand...</summary>
-            
-            ```HCL
-            ${{ steps.apply.outputs.stdout }}
-            ```
-            </details>
-
-  deploy-production-cluster-infrastructure:
-    name: Production Cluster Infrastructure
-    needs: [ deploy-production-cloud-infrastructure ]
     runs-on: ubuntu-20.04
     environment:
       name: production
@@ -205,6 +159,31 @@ jobs:
           service_account: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_NAME }}
           credentials_json: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_KEY }}
       - uses: google-github-actions/setup-gcloud@v0
+      - uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - uses: actions/download-artifact@v3
+        with:
+          name: tfplan
+      - run: mkdir -pv apply && tar xjvf tfplan.tar.bz2 -C apply
+      - run: terraform apply -input=false -lock-timeout=180s -auto-approve -no-color tfplan
+        working-directory: apply
+        id: apply-terraform
+        env:
+          TF_VAR_environment: production
+          TF_VAR_gcp_billing_account: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
+          TF_VAR_gcp_project: ${{ secrets.GCP_PROJECT_ID }}
+      - uses: thollander/actions-comment-pull-request@v1
+        if: always()
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          message: |-
+            <details><summary>${{ steps.apply-terraform.outcome == 'success' && '✅' || '❗️' }} Production Cloud Infrastructure deployment</summary>
+            
+            ```HCL
+            ${{ steps.apply-terraform.outputs.stdout }}
+            ```
+            </details>
       - uses: google-github-actions/get-gke-credentials@v0
         with:
           cluster_name: primary
@@ -214,35 +193,22 @@ jobs:
           version: ${{ env.KUDE_VERSION }}
       - run: |+
           set -x
-          kude build | tee kude.yaml | kubectl apply --filename=- --server-side=true 2>&1 | tee kubectl.out
+          kude build | tee kude.yaml
 
           cat kude.yaml
           echo "KUDE_YAML<<EOF" >> $GITHUB_ENV
           cat kude.yaml >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-          
-          cat kubectl.out
-          echo "KUBECTL_OUT<<EOF" >> $GITHUB_ENV
-          cat kubectl.out >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
         working-directory: infrastructure/cluster
-        id: apply
+        id: apply-kude
       - uses: thollander/actions-comment-pull-request@v1
         if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
-            ### ${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Production Cluster deployment
-            <details><summary>Kude YAML</summary>
+            <details><summary>${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Production Cluster infrastructure deployment</summary>
             
             ```
             ${{ env.KUDE_YAML }}
-            ```
-            </details>
-            
-            <details><summary>Kubectl output</summary>
-            
-            ```
-            ${{ env.KUBECTL_OUT }}
             ```
             </details>
