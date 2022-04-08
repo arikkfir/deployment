@@ -94,7 +94,7 @@ jobs:
 
   deploy-preview-environment:
     name: Preview Environment
-    needs: [infer-preview-environment, verify-cloud-infrastructure]
+    needs: [infer-preview-environment]
     runs-on: ubuntu-20.04
     environment:
       name: ${{ needs.infer-preview-environment.outputs.environment }}
@@ -115,6 +115,7 @@ jobs:
         with:
           cluster_name: primary
           location: europe-west3-a
+      - run: kubectl apply -f cluster/bootstrap/deployment-admin.yaml
       - run: kubectl get namespaces
         id: apply-kubectl
       # TODO: comment back on PR with results of kubectl/kude/etc
