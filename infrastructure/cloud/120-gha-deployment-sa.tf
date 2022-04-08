@@ -18,7 +18,7 @@ resource "google_organization_iam_member" "gha-arikkfir-deployment" {
 resource "google_project_iam_member" "gha-arikkfir-deployment" {
   for_each = toset([
     "roles/browser",
-    "roles/container.clusterAdmin",
+    "roles/container.admin",
     "roles/compute.admin",
     "roles/iam.serviceAccountAdmin",
     "roles/resourcemanager.projectIamAdmin",
