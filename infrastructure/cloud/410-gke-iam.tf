@@ -5,6 +5,12 @@ resource "google_service_account" "gke-node" {
   display_name = "GKE nodes service account"
 }
 
+resource "google_service_account_iam_member" "gke-node_gha-arikkfir-deployment_iam_serviceAccountUser" {
+  service_account_id = google_service_account.gke-node.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.gha-arikkfir-deployment.email}"
+}
+
 resource "google_project_iam_member" "gke-node" {
   for_each = toset([
     "roles/logging.logWriter",
