@@ -114,7 +114,7 @@ jobs:
         uses: google-github-actions/get-gke-credentials@v0
         with:
           cluster_name: primary
-          location: europe-west3
+          location: europe-west3-a
       - run: kubectl get namespaces
         id: apply-kubectl
       # TODO: comment back on PR with results of kubectl/kude/etc
@@ -169,7 +169,7 @@ jobs:
         uses: google-github-actions/get-gke-credentials@v0
         with:
           cluster_name: primary
-          location: europe-west3
+          location: europe-west3-a
       - run: kubectl get namespaces
         id: apply-kubectl
       # TODO: comment back on PR with results of kubectl/kude/etc
