@@ -94,7 +94,7 @@ jobs:
 
   deploy-preview-environment:
     name: Preview Environment
-    needs: [infer-preview-environment, verify-terraform-formatting]
+    needs: [infer-preview-environment, verify-cloud-infrastructure]
     runs-on: ubuntu-20.04
     environment:
       name: ${{ needs.infer-preview-environment.outputs.environment }}
