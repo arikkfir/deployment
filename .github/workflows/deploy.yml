@@ -94,7 +94,7 @@ jobs:
 
   deploy-preview-environment:
     name: Preview Environment
-    needs: [infer-preview-environment]
+    needs: [ infer-preview-environment ]
     runs-on: ubuntu-20.04
     environment:
       name: ${{ needs.infer-preview-environment.outputs.environment }}
@@ -115,14 +115,13 @@ jobs:
         with:
           cluster_name: primary
           location: europe-west3-a
-      - run: kubectl apply -f cluster/bootstrap/deployment-admin.yaml
       - run: kubectl get namespaces
-        id: apply-kubectl
+        id: apply
       # TODO: comment back on PR with results of kubectl/kude/etc
 
   deploy-production-environment:
     name: Production Environment
-    needs: [verify-cloud-infrastructure,deploy-preview-environment]
+    needs: [ verify-cloud-infrastructure, deploy-preview-environment ]
     runs-on: ubuntu-20.04
     environment:
       name: production
@@ -153,17 +152,17 @@ jobs:
           name: tfplan
       - run: tar xjvf tfplan.tar.bz2
       - run: terraform apply -input=false -lock-timeout=180s -auto-approve -no-color tfplan
-        id: apply
+        id: apply-terraform
       - uses: thollander/actions-comment-pull-request@v1
         if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
-            ### ${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Production deployment
+            ### ${{ steps.apply-terraform.outcome == 'success' && '✅' || '❗️' }} Production Terraform deployment
             <details><summary>Expand...</summary>
             
             ```HCL
-            ${{ steps.apply.outputs.stdout }}
+            ${{ steps.apply-terraform.outputs.stdout }}
             ```
             </details>
       - id: get-credentials
