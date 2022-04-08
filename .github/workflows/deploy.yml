@@ -20,6 +20,9 @@ env:
   GCP_ZONE: europe-west3-a
   KUDE_VERSION: v0.0.1-alpha02
   TERRAFORM_VERSION: 1.1.7
+  TF_IN_AUTOMATION: true
+  TF_VAR_gcp_region: europe-west3
+  TF_VAR_gcp_zone: europe-west3-a
 
 jobs:
 
@@ -27,12 +30,9 @@ jobs:
     name: Verify Cloud Infrastructure
     runs-on: ubuntu-20.04
     env:
-      TF_IN_AUTOMATION: true
       TF_VAR_environment: ${{ needs.infer-preview-environment.outputs.environment }}
       TF_VAR_gcp_billing_account: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
       TF_VAR_gcp_project: ${{ secrets.GCP_PROJECT_ID }}
-      TF_VAR_gcp_region: ${{ env.GCP_REGION }}
-      TF_VAR_gcp_zone: ${{ env.GCP_ZONE }}
     defaults:
       run:
         working-directory: infrastructure/cloud
@@ -171,12 +171,9 @@ jobs:
       - run: terraform apply -input=false -lock-timeout=180s -auto-approve -no-color tfplan
         id: apply
         env:
-          TF_IN_AUTOMATION: true
           TF_VAR_environment: production
           TF_VAR_gcp_billing_account: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
           TF_VAR_gcp_project: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_gcp_region: ${{ env.GCP_REGION }}
-          TF_VAR_gcp_zone: ${{ env.GCP_ZONE }}
       - uses: thollander/actions-comment-pull-request@v1
         if: always()
         with:
