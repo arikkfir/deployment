@@ -29,3 +29,13 @@ resource "google_project_iam_member" "gha-arikkfir-deployment" {
   role    = each.key
   member  = "serviceAccount:${google_service_account.gha-arikkfir-deployment.email}"
 }
+
+data "google_compute_default_service_account" "default" {
+  project = google_project.project.project_id
+}
+
+resource "google_service_account_iam_member" "default-compute-gha-arikkfir-deployment-iam-serviceAccountUser" {
+  service_account_id = data.google_compute_default_service_account.default.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.gha-arikkfir-deployment.email}"
+}

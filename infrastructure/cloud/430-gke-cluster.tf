@@ -1,6 +1,6 @@
 resource "google_container_cluster" "primary" {
   depends_on = [
-    google_compute_subnetwork.gke-subnet
+    google_service_account_iam_member.default-compute-gha-arikkfir-deployment-iam-serviceAccountUser,
   ]
 
   # Provisioning
@@ -53,9 +53,5 @@ resource "google_container_cluster" "primary" {
   }
   workload_identity_config {
     workload_pool = "${google_project.project.project_id}.svc.id.goog"
-  }
-
-  node_config {
-    service_account = google_service_account.gke-node.email
   }
 }

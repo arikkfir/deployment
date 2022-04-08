@@ -31,6 +31,7 @@ jobs:
         env:
           TF_IN_AUTOMATION: true
       - uses: thollander/actions-comment-pull-request@v1
+        if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
@@ -71,6 +72,10 @@ jobs:
       TF_VAR_gcp_project: ${{ secrets.GCP_PROJECT_ID }}
       TF_VAR_gcp_region: europe-west3
       TF_VAR_gcp_zone: europe-west3-a
+    concurrency:
+      group: ${{ needs.infer-preview-environment.outputs.environment }}
+      cancel-in-progress: false
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v3
       - uses: google-github-actions/auth@v0
@@ -87,6 +92,7 @@ jobs:
         id: plan
         working-directory: infrastructure/cloud
       - uses: thollander/actions-comment-pull-request@v1
+        if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
@@ -101,6 +107,7 @@ jobs:
         id: apply
         working-directory: infrastructure/cloud
       - uses: thollander/actions-comment-pull-request@v1
+        if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
@@ -126,6 +133,10 @@ jobs:
       TF_VAR_gcp_project: ${{ secrets.GCP_PROJECT_ID }}
       TF_VAR_gcp_region: europe-west3
       TF_VAR_gcp_zone: europe-west3-a
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v3
       - uses: google-github-actions/auth@v0
@@ -142,6 +153,7 @@ jobs:
         id: plan
         working-directory: infrastructure/cloud
       - uses: thollander/actions-comment-pull-request@v1
+        if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
@@ -156,6 +168,7 @@ jobs:
         id: apply
         working-directory: infrastructure/cloud
       - uses: thollander/actions-comment-pull-request@v1
+        if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
