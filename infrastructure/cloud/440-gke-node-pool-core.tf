@@ -1,4 +1,8 @@
 resource "google_container_node_pool" "core-n2-custom-4-7168-pre" {
+  depends_on = [
+    google_service_account_iam_member.gke-node_gha-arikkfir-deployment_iam_serviceAccountUser
+  ]
+
   provider = google-beta
   project  = google_container_cluster.primary.project
   cluster  = google_container_cluster.primary.name
