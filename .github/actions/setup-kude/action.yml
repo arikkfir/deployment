@@ -7,6 +7,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Download
-      run: curl -sSL -o /usr/local/bin/kude "https://github.com/arikkfir/kude/releases/download/${{ inputs.version }}/kude-linux-amd64"
+    - run: curl -sSL -o /usr/local/bin/kude "https://github.com/arikkfir/kude/releases/download/${{ inputs.version }}/kude-linux-amd64"
+      shell: bash
+    - run: chmod +x /usr/local/bin/kude
       shell: bash
