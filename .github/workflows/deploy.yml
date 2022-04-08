@@ -115,8 +115,12 @@ jobs:
         with:
           cluster_name: primary
           location: europe-west3-a
-      - run: kubectl get namespaces
+      - uses: ./.github/actions/setup-kude
+        with:
+          version: v0.0.1-alpha02
+      - run: kude
         id: apply
+        working-directory: cluster
       # TODO: comment back on PR with results of kubectl/kude/etc
 
   deploy-production-environment:
