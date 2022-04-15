@@ -52,3 +52,14 @@ resource "google_storage_bucket_iam_member" "arikkfir-devops-gha-arikkfir-deploy
   role   = each.key
   member = "serviceAccount:${google_service_account.gha-arikkfir-deployment.email}"
 }
+
+resource "google_storage_bucket_iam_member" "arikkfir-artifacts-gha-arikkfir-deployment" {
+  for_each = toset([
+    "roles/storage.admin",
+    "roles/storage.objectAdmin",
+  ])
+
+  bucket = google_storage_bucket.arikkfir-artifacts.name
+  role   = each.key
+  member = "serviceAccount:${google_service_account.gha-arikkfir-deployment.email}"
+}

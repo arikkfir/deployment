@@ -4,7 +4,7 @@ resource "google_service_account" "gha-arikkfir-kude" {
   display_name = "GitHub Actions: arikkfir/kude"
 }
 
-resource "google_storage_bucket_iam_member" "arikkfir-devops-gha-arikkfir-kude" {
+resource "google_storage_bucket_iam_member" "arikkfir-artifacts-gha-arikkfir-kude" {
   for_each = toset([
     "roles/storage.objectCreator",
     "roles/storage.objectViewer",
