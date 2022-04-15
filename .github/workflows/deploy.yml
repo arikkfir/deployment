@@ -121,7 +121,8 @@ jobs:
           version: ${{ env.KUDE_VERSION }}
       - run: |+
           set -x
-          kude build | tee kude.yaml
+          cat kude.yaml
+          kude build
 
           cat kude.yaml
           echo "KUDE_YAML<<EOF" >> $GITHUB_ENV
