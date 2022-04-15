@@ -1,9 +1,9 @@
 apiVersion: kude.kfirs.com/v1alpha1
 kind: Pipeline
 resources:
-  - https://github.com/stefanprodan/podinfo//kustomize/deployment.yaml
-  - https://github.com/stefanprodan/podinfo//kustomize/service.yaml
-  - https://github.com/stefanprodan/podinfo//kustomize/hpa.yaml
+  - git::https://github.com/stefanprodan/podinfo//kustomize/deployment.yaml
+  - git::https://github.com/stefanprodan/podinfo//kustomize/service.yaml
+  - git::https://github.com/stefanprodan/podinfo//kustomize/hpa.yaml
 pipeline:
   - image: ghcr.io/arikkfir/kude/functions/annotate
     config:
