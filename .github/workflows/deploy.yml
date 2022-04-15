@@ -121,12 +121,9 @@ jobs:
           version: ${{ env.KUDE_VERSION }}
       - run: |+
           set -x
-          cat kude.yaml
-          kude build
-
-          cat kude.yaml
-          echo "KUDE_YAML<<EOF" >> $GITHUB_ENV
-          cat kude.yaml >> $GITHUB_ENV
+          kude build | tee kude-output.yaml
+          echo "APPS_YAML<<EOF" >> $GITHUB_ENV
+          cat kude-output.yaml >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
         working-directory: apps
         id: apply
@@ -138,7 +135,7 @@ jobs:
             <details><summary>${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Preview Apps deployment</summary>
             
             ```
-            ${{ env.KUDE_YAML }}
+            ${{ env.APPS_YAML }}
             ```
             </details>
 
