@@ -34,6 +34,14 @@ resource "google_storage_bucket" "arikkfir-devops" {
   uniform_bucket_level_access = true
 }
 
+resource "google_storage_bucket" "arikkfir-artifacts" {
+  name                        = "arikkfir-artifacts"
+  location                    = "europe-west3"
+  project                     = google_project.project.project_id
+  storage_class               = "STANDARD"
+  uniform_bucket_level_access = true
+}
+
 resource "google_storage_bucket_iam_member" "arikkfir-devops-gha-arikkfir-deployment" {
   for_each = toset([
     "roles/storage.admin",
@@ -41,6 +49,17 @@ resource "google_storage_bucket_iam_member" "arikkfir-devops-gha-arikkfir-deploy
   ])
 
   bucket = google_storage_bucket.arikkfir-devops.name
+  role   = each.key
+  member = "serviceAccount:${google_service_account.gha-arikkfir-deployment.email}"
+}
+
+resource "google_storage_bucket_iam_member" "arikkfir-artifacts-gha-arikkfir-deployment" {
+  for_each = toset([
+    "roles/storage.admin",
+    "roles/storage.objectAdmin",
+  ])
+
+  bucket = google_storage_bucket.arikkfir-artifacts.name
   role   = each.key
   member = "serviceAccount:${google_service_account.gha-arikkfir-deployment.email}"
 }

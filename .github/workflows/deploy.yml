@@ -13,33 +13,68 @@ on:
 
 defaults:
   run:
-    shell: bash -eu {0}
+    shell: bash -euo pipefail {0}
+
+env:
+  GCP_REGION: europe-west3
+  GCP_ZONE: europe-west3-a
+  KUDE_VERSION: v0.0.1-alpha03
+  TERRAFORM_VERSION: 1.1.7
+  TF_IN_AUTOMATION: true
+  TF_VAR_gcp_region: europe-west3
+  TF_VAR_gcp_zone: europe-west3-a
 
 jobs:
 
-  verify-terraform-formatting:
-    name: Terraform Formatting
+  verify-cloud-infrastructure:
+    name: Verify Cloud Infrastructure
     runs-on: ubuntu-20.04
+    env:
+      TF_VAR_environment: ${{ needs.infer-preview-environment.outputs.environment }}
+      TF_VAR_gcp_billing_account: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
+      TF_VAR_gcp_project: ${{ secrets.GCP_PROJECT_ID }}
+    defaults:
+      run:
+        working-directory: infrastructure/cloud
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v3
+      - uses: google-github-actions/auth@v0
+        with:
+          service_account: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_NAME }}
+          credentials_json: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_KEY }}
+      - uses: google-github-actions/setup-gcloud@v0
       - uses: hashicorp/setup-terraform@v1
         with:
-          terraform_version: 1.1.7
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
       - run: terraform fmt -check -recursive -no-color -diff
         id: fmt
-        working-directory: infrastructure/cloud
-        env:
-          TF_IN_AUTOMATION: true
+      - run: terraform init -input=false -no-color
+      - run: terraform plan -input=false -lock-timeout=180s -no-color -out tfplan
+        id: plan
+      - run: tar cjvf tfplan.tar.bz2 .terraform .terraform.lock.hcl *.tf tfplan
+      - uses: actions/upload-artifact@v3
+        with:
+          name: tfplan
+          path: infrastructure/cloud/tfplan.tar.bz2
+          if-no-files-found: error
+          retention-days: 7
       - uses: thollander/actions-comment-pull-request@v1
         if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
-            ### ${{ steps.fmt.outcome == 'success' && '✅' || '❗️' }} Terraform formatting
-            <details><summary>Expand...</summary>
+            <details><summary>${{ steps.fmt.outcome == 'success' && '✅' || '❗️' }} Cloud Infrastructure formatting</summary>
             
             ```diff
             ${{ steps.fmt.outputs.stdout }}
+            ```
+            </details>
+
+            <details><summary>${{ steps.plan.outcome == 'success' && '✅' || '❗️' }} Cloud Infrastructure plan</summary>
+            
+            ```HCL
+            ${{ steps.plan.outputs.stdout }}
             ```
             </details>
 
@@ -60,18 +95,11 @@ jobs:
 
   deploy-preview-environment:
     name: Preview Environment
-    needs: [infer-preview-environment, verify-terraform-formatting]
+    needs: [ infer-preview-environment ]
     runs-on: ubuntu-20.04
     environment:
       name: ${{ needs.infer-preview-environment.outputs.environment }}
       url: https://${{ needs.infer-preview-environment.outputs.environment }}.env.kfirs.com
-    env:
-      TF_IN_AUTOMATION: true
-      TF_VAR_environment: ${{ needs.infer-preview-environment.outputs.environment }}
-      TF_VAR_gcp_billing_account: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
-      TF_VAR_gcp_project: ${{ secrets.GCP_PROJECT_ID }}
-      TF_VAR_gcp_region: europe-west3
-      TF_VAR_gcp_zone: europe-west3-a
     concurrency:
       group: ${{ needs.infer-preview-environment.outputs.environment }}
       cancel-in-progress: false
@@ -83,56 +111,41 @@ jobs:
           service_account: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_NAME }}
           credentials_json: ${{ secrets.GCP_SA_GHA_ARIKKFIR_DEPLOYMENT_KEY }}
       - uses: google-github-actions/setup-gcloud@v0
-      - uses: hashicorp/setup-terraform@v1
+      - id: get-credentials
+        uses: google-github-actions/get-gke-credentials@v0
         with:
-          terraform_version: 1.1.7
-      - run: terraform init -input=false -no-color
-        working-directory: infrastructure/cloud
-      - run: terraform plan -input=false -lock-timeout=180s -no-color -out tfplan
-        id: plan
-        working-directory: infrastructure/cloud
-      - uses: thollander/actions-comment-pull-request@v1
-        if: always()
+          cluster_name: primary
+          location: ${{ env.GCP_ZONE }}
+      - uses: ./.github/actions/setup-kude
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          message: |-
-            ### ${{ steps.plan.outcome == 'success' && '✅' || '❗️' }} Preview environment plan
-            <details><summary>Expand...</summary>
-            
-            ```HCL
-            ${{ steps.plan.outputs.stdout }}
-            ```
-            </details>
-      - run: terraform apply -input=false -lock-timeout=180s -auto-approve -no-color tfplan
+          version: ${{ env.KUDE_VERSION }}
+      - run: |+
+          set -x
+          kude build | tee kude-output.yaml
+          echo "APPS_YAML<<EOF" >> $GITHUB_ENV
+          cat kude-output.yaml >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+        working-directory: apps
         id: apply
-        working-directory: infrastructure/cloud
       - uses: thollander/actions-comment-pull-request@v1
         if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
-            ### ${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Preview environment deployment
-            <details><summary>Expand...</summary>
+            <details><summary>${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Preview Apps deployment</summary>
             
-            ```HCL
-            ${{ steps.apply.outputs.stdout }}
+            ```
+            ${{ env.APPS_YAML }}
             ```
             </details>
 
   deploy-production-environment:
-    name: Production Environment
-    needs: deploy-preview-environment
+    name: Production Cloud Infrastructure
+    needs: [ verify-cloud-infrastructure, deploy-preview-environment ]
     runs-on: ubuntu-20.04
     environment:
       name: production
       url: https://kfirs.com
-    env:
-      TF_IN_AUTOMATION: true
-      TF_VAR_environment: production
-      TF_VAR_gcp_billing_account: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
-      TF_VAR_gcp_project: ${{ secrets.GCP_PROJECT_ID }}
-      TF_VAR_gcp_region: europe-west3
-      TF_VAR_gcp_zone: europe-west3-a
     concurrency:
       group: production
       cancel-in-progress: false
@@ -146,36 +159,54 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v0
       - uses: hashicorp/setup-terraform@v1
         with:
-          terraform_version: 1.1.7
-      - run: terraform init -input=false -no-color
-        working-directory: infrastructure/cloud
-      - run: terraform plan -input=false -lock-timeout=180s -no-color -out tfplan
-        id: plan
-        working-directory: infrastructure/cloud
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - uses: actions/download-artifact@v3
+        with:
+          name: tfplan
+      - run: mkdir -pv apply && tar xjvf tfplan.tar.bz2 -C apply
+      - run: terraform apply -input=false -lock-timeout=180s -auto-approve -no-color tfplan
+        working-directory: apply
+        id: apply-terraform
+        env:
+          TF_VAR_environment: production
+          TF_VAR_gcp_billing_account: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
+          TF_VAR_gcp_project: ${{ secrets.GCP_PROJECT_ID }}
       - uses: thollander/actions-comment-pull-request@v1
         if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
-            ### ${{ steps.plan.outcome == 'success' && '✅' || '❗️' }} Production environment plan
-            <details><summary>Expand...</summary>
+            <details><summary>${{ steps.apply-terraform.outcome == 'success' && '✅' || '❗️' }} Production Cloud Infrastructure deployment</summary>
             
             ```HCL
-            ${{ steps.plan.outputs.stdout }}
+            ${{ steps.apply-terraform.outputs.stdout }}
             ```
             </details>
-      - run: terraform apply -input=false -lock-timeout=180s -auto-approve -no-color tfplan
-        id: apply
-        working-directory: infrastructure/cloud
+      - uses: google-github-actions/get-gke-credentials@v0
+        with:
+          cluster_name: primary
+          location: ${{ env.GCP_ZONE }}
+      - uses: ./.github/actions/setup-kude
+        with:
+          version: ${{ env.KUDE_VERSION }}
+      - run: |+
+          set -x
+          kude build | tee kude.yaml
+
+          cat kude.yaml
+          echo "KUDE_YAML<<EOF" >> $GITHUB_ENV
+          cat kude.yaml >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+        working-directory: infrastructure/cluster
+        id: apply-kude
       - uses: thollander/actions-comment-pull-request@v1
         if: always()
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |-
-            ### ${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Production environment deployment
-            <details><summary>Expand...</summary>
+            <details><summary>${{ steps.apply.outcome == 'success' && '✅' || '❗️' }} Production Cluster infrastructure deployment</summary>
             
-            ```HCL
-            ${{ steps.apply.outputs.stdout }}
+            ```
+            ${{ env.KUDE_YAML }}
             ```
             </details>
